@@ -1,7 +1,8 @@
 import os
 import streamlit as st
 import re
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
@@ -9,7 +10,6 @@ from langchain_core.documents import Document
 # ==========================================
 # 0. ENVIRONMENT SECRETS INJECTION
 # ==========================================
-# Force the key into the system environment so Google's low-level SDK finds it natively
 os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
 
 # ==========================================
@@ -37,8 +37,8 @@ def initialize_vector_store():
         Document(page_content="Renters Insurance: Covers personal property inside a rented apartment and provides personal liability. Typical bundle addition is $15/month.")
     ]
     
-    # SWAPPED TO CURRENT GOOGLE EMBEDDING MODEL
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+    # SWAPPED TO LOCAL OPEN-SOURCE EMBEDDINGS (Bypasses API errors entirely)
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     
     vector_store = FAISS.from_documents(docs, embeddings)
     return vector_store
@@ -52,7 +52,6 @@ def process_user_input(user_input):
     docs = vector_db.similarity_search(user_input, k=2)
     context = "\n".join([d.page_content for d in docs])
     
-    # Automatically pulls from os.environ
     llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.1)
     
     prompt = ChatPromptTemplate.from_messages([
@@ -102,16 +101,13 @@ if st.session_state.step == "shop":
             with st.spinner("Checking mutual policies..."):
                 raw_response = process_user_input(prompt)
                 
-                # Check if LLM decided to route to checkout via our guardrail token
                 match = re.search(r"\[ADD_POLICY:\s*(.*?)\|(.*?)\]", raw_response)
                 
                 if match:
-                    # Clean the token from the user-facing text
                     clean_response = raw_response.replace(match.group(0), "").strip()
                     st.write(clean_response)
                     st.session_state.messages.append({"role": "assistant", "content": clean_response})
                     
-                    # Update State and Route to Checkout
                     st.session_state.bundled_policy = match.group(1).strip()
                     st.session_state.bundled_price = match.group(2).strip()
                     st.session_state.step = "checkout"
