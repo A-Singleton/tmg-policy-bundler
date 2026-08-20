@@ -37,8 +37,9 @@ def initialize_vector_store():
         Document(page_content="Renters Insurance: Covers personal property inside a rented apartment and provides personal liability. Typical bundle addition is $15/month.")
     ]
     
-    # Clean, simple initialization. It pulls automatically from os.environ now.
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    # SWAPPED TO CURRENT GOOGLE EMBEDDING MODEL
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+    
     vector_store = FAISS.from_documents(docs, embeddings)
     return vector_store
 
