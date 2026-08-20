@@ -1,9 +1,16 @@
+import os
 import streamlit as st
 import re
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
+
+# ==========================================
+# 0. ENVIRONMENT SECRETS INJECTION
+# ==========================================
+# Force the key into the system environment so Google's low-level SDK finds it natively
+os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
 
 # ==========================================
 # 1. APPLICATION STATE MANAGEMENT
@@ -30,13 +37,8 @@ def initialize_vector_store():
         Document(page_content="Renters Insurance: Covers personal property inside a rented apartment and provides personal liability. Typical bundle addition is $15/month.")
     ]
     
-    # EXPLICITLY PASS THE KEY HERE
-    api_key = st.secrets["GOOGLE_API_KEY"]
-    embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/embedding-001", 
-        google_api_key=api_key
-    )
-    
+    # Clean, simple initialization. It pulls automatically from os.environ now.
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     vector_store = FAISS.from_documents(docs, embeddings)
     return vector_store
 
@@ -49,12 +51,8 @@ def process_user_input(user_input):
     docs = vector_db.similarity_search(user_input, k=2)
     context = "\n".join([d.page_content for d in docs])
     
-    api_key = st.secrets["GOOGLE_API_KEY"]
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash", 
-        temperature=0.1,
-        google_api_key=api_key
-    )
+    # Automatically pulls from os.environ
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.1)
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a helpful insurance bundling assistant for The Mutual Group.
