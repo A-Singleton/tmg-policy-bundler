@@ -32,7 +32,7 @@ if "bundled_price" not in st.session_state:
 @st.cache_resource
 def initialize_vector_store():
     docs = [
-        Document(page_content="Homeowners Insurance: Essential coverage for physical damage to your house and property liability. Typical bundle addition is $120/month."),
+        Document(page_content="Homeowners Insurance: Essential coverage for physical damage to your house and property liability. Standard home limits start at $250,000 for dwelling coverage and $100,000 for personal liability. Typical bundle addition is $120/month."),
         Document(page_content="Umbrella Policy: Provides an extra $1M-$5M in liability coverage that sits above your auto and home policies. Crucial for high-net-worth individuals to protect assets from lawsuits. Typical bundle addition is $45/month."),
         Document(page_content="Renters Insurance: Covers personal property inside a rented apartment and provides personal liability. Typical bundle addition is $15/month.")
     ]
@@ -52,14 +52,11 @@ class TMG_Guardrails:
     """Deterministic middleware to validate LLM outputs for a regulated industry."""
     @staticmethod
     def validate_policy_bundle(policy_name, price):
-        # 1. Enforce Approved Products
         approved_policies = ["Homeowners", "Umbrella", "Renters"]
         if not any(approved in policy_name for approved in approved_policies):
             return False, f"⚠️ GUARDRAIL BLOCKED: '{policy_name}' is not an approved TMG product."
         
-        # 2. Enforce Financial Boundaries (Prevent hallucinations of free or illogical policies)
         try:
-            # Strip non-numeric characters for check
             numeric_price = int(re.sub(r'[^\d]', '', price))
             if numeric_price <= 0 or numeric_price > 500:
                 return False, f"⚠️ GUARDRAIL BLOCKED: Hallucinated premium amount ({price}). Manual underwriting required."
@@ -77,14 +74,15 @@ def process_user_input(user_input):
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a strictly governed underwriting assistant for The Mutual Group.
-        You must ONLY use the provided context to answer. If the context does not contain the answer, explicitly state: "I must refer you to a licensed agent."
+        You must ONLY use the provided context to answer. 
+        If the user asks about coverage details that are NOT in the context, politely reply: "I don't have those specific details in my current files, so I must refer you to a licensed agent."
         
         {context}
         
         RULES:
-        1. Keep answers brief and professional.
+        1. Keep answers conversational but professional.
         2. Never hallucinate prices or policies not in the text.
-        3. If the user explicitly agrees to add a policy, you MUST append this exact string to the very end of your response: [ADD_POLICY: <Policy Name>|<Price>]
+        3. If the user explicitly agrees to add a policy (e.g., "let's do it", "add umbrella"), you MUST append this exact string to the very end of your response: [ADD_POLICY: <Policy Name>|<Price>]
         Example: [ADD_POLICY: Umbrella|$45]"""),
         ("human", "{question}")
     ])
