@@ -148,20 +148,24 @@ if st.session_state.step == "shop":
                     
                     if is_valid:
                         clean_response = raw_response.replace(match.group(0), "").strip()
-                        st.write(clean_response)
-                        st.session_state.messages.append({"role": "assistant", "content": clean_response})
+                        
+                        # ESCAPE DOLLAR SIGNS FOR UI RENDERING
+                        display_text = clean_response.replace("$", r"\$")
+                        st.write(display_text)
+                        st.session_state.messages.append({"role": "assistant", "content": display_text})
                         
                         st.session_state.bundled_policy = proposed_policy
                         st.session_state.bundled_price = proposed_price
                         st.session_state.step = "checkout"
                         st.rerun()
                     else:
-                        # Display the Guardrail intervention to the user
                         st.error(guardrail_msg)
                         st.session_state.messages.append({"role": "assistant", "content": guardrail_msg})
                 else:
-                    st.write(raw_response)
-                    st.session_state.messages.append({"role": "assistant", "content": raw_response})
+                    # ESCAPE DOLLAR SIGNS FOR UI RENDERING
+                    display_text = raw_response.replace("$", r"\$")
+                    st.write(display_text)
+                    st.session_state.messages.append({"role": "assistant", "content": display_text})
 
 elif st.session_state.step == "checkout":
     st.success("Bundle Successfully Configured!")
