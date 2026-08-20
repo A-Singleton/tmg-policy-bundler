@@ -1,6 +1,6 @@
 import streamlit as st
 import re
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
@@ -24,13 +24,13 @@ if "bundled_price" not in st.session_state:
 # ==========================================
 @st.cache_resource
 def initialize_vector_store():
-    # Simulated PDF policy documents
     docs = [
         Document(page_content="Homeowners Insurance: Essential coverage for physical damage to your house and property liability. Typical bundle addition is $120/month."),
         Document(page_content="Umbrella Policy: Provides an extra $1M-$5M in liability coverage that sits above your auto and home policies. Crucial for high-net-worth individuals to protect assets from lawsuits. Typical bundle addition is $45/month."),
         Document(page_content="Renters Insurance: Covers personal property inside a rented apartment and provides personal liability. Typical bundle addition is $15/month.")
     ]
-    embeddings = OpenAIEmbeddings()
+    # SWAPPED TO GOOGLE EMBEDDINGS
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     vector_store = FAISS.from_documents(docs, embeddings)
     return vector_store
 
@@ -40,13 +40,12 @@ vector_db = initialize_vector_store()
 # 3. LLM ORCHESTRATION & DECISION ENGINE
 # ==========================================
 def process_user_input(user_input):
-    # Retrieve relevant policy docs
     docs = vector_db.similarity_search(user_input, k=2)
     context = "\n".join([d.page_content for d in docs])
     
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1)
+    # SWAPPED TO GEMINI FLASH (Extremely fast for prototypes)
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.1)
     
-    # System Prompt with Routing Guardrails
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a helpful insurance bundling assistant for The Mutual Group.
         Use the following retrieved policy documents to answer the user's questions:
