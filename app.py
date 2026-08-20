@@ -29,8 +29,14 @@ def initialize_vector_store():
         Document(page_content="Umbrella Policy: Provides an extra $1M-$5M in liability coverage that sits above your auto and home policies. Crucial for high-net-worth individuals to protect assets from lawsuits. Typical bundle addition is $45/month."),
         Document(page_content="Renters Insurance: Covers personal property inside a rented apartment and provides personal liability. Typical bundle addition is $15/month.")
     ]
-    # SWAPPED TO GOOGLE EMBEDDINGS
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    
+    # EXPLICITLY PASS THE KEY HERE
+    api_key = st.secrets["GOOGLE_API_KEY"]
+    embeddings = GoogleGenerativeAIEmbeddings(
+        model="models/embedding-001", 
+        google_api_key=api_key
+    )
+    
     vector_store = FAISS.from_documents(docs, embeddings)
     return vector_store
 
@@ -43,8 +49,12 @@ def process_user_input(user_input):
     docs = vector_db.similarity_search(user_input, k=2)
     context = "\n".join([d.page_content for d in docs])
     
-    # SWAPPED TO GEMINI FLASH (Extremely fast for prototypes)
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.1)
+    api_key = st.secrets["GOOGLE_API_KEY"]
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-1.5-flash", 
+        temperature=0.1,
+        google_api_key=api_key
+    )
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a helpful insurance bundling assistant for The Mutual Group.
