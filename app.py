@@ -52,8 +52,8 @@ def process_user_input(user_input):
     docs = vector_db.similarity_search(user_input, k=2)
     context = "\n".join([d.page_content for d in docs])
     
-    # SWAPPED TO UNIVERSALLY AVAILABLE GEMINI 1.0 PRO
-    llm = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.1)
+    # Swapped to the active Gemini 2.5 Flash model
+    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.1)
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a helpful insurance bundling assistant for The Mutual Group.
