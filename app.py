@@ -102,10 +102,27 @@ if st.session_state.step == "shop":
     st.divider()
     
     st.subheader("Popular Bundles to Enhance Your Coverage")
+    st.subheader("Popular Bundles to Enhance Your Coverage")
     col1, col2, col3 = st.columns(3)
-    with col1: st.button("🏡 Homeowners", use_container_width=True)
-    with col2: st.button("☔ Umbrella", use_container_width=True)
-    with col3: st.button("🏢 Renters", use_container_width=True)
+    
+    # Wire the buttons to update state and instantly reroute to checkout
+    if col1.button("🏡 Homeowners", use_container_width=True):
+        st.session_state.bundled_policy = "Homeowners"
+        st.session_state.bundled_price = "$120"
+        st.session_state.step = "checkout"
+        st.rerun()
+        
+    if col2.button("☔ Umbrella", use_container_width=True):
+        st.session_state.bundled_policy = "Umbrella"
+        st.session_state.bundled_price = "$45"
+        st.session_state.step = "checkout"
+        st.rerun()
+        
+    if col3.button("🏢 Renters", use_container_width=True):
+        st.session_state.bundled_policy = "Renters"
+        st.session_state.bundled_price = "$15"
+        st.session_state.step = "checkout"
+        st.rerun()
     
     st.divider()
     
