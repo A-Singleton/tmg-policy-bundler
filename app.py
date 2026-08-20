@@ -102,7 +102,6 @@ if st.session_state.step == "shop":
     st.divider()
     
     st.subheader("Popular Bundles to Enhance Your Coverage")
-    st.subheader("Popular Bundles to Enhance Your Coverage")
     col1, col2, col3 = st.columns(3)
     
     # Wire the buttons to update state and instantly reroute to checkout
