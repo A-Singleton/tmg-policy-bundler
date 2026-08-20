@@ -48,22 +48,43 @@ vector_db = initialize_vector_store()
 # ==========================================
 # 3. LLM ORCHESTRATION & DECISION ENGINE
 # ==========================================
+class TMG_Guardrails:
+    """Deterministic middleware to validate LLM outputs for a regulated industry."""
+    @staticmethod
+    def validate_policy_bundle(policy_name, price):
+        # 1. Enforce Approved Products
+        approved_policies = ["Homeowners", "Umbrella", "Renters"]
+        if not any(approved in policy_name for approved in approved_policies):
+            return False, f"⚠️ GUARDRAIL BLOCKED: '{policy_name}' is not an approved TMG product."
+        
+        # 2. Enforce Financial Boundaries (Prevent hallucinations of free or illogical policies)
+        try:
+            # Strip non-numeric characters for check
+            numeric_price = int(re.sub(r'[^\d]', '', price))
+            if numeric_price <= 0 or numeric_price > 500:
+                return False, f"⚠️ GUARDRAIL BLOCKED: Hallucinated premium amount ({price}). Manual underwriting required."
+        except ValueError:
+            return False, "⚠️ GUARDRAIL BLOCKED: Invalid premium format detected."
+            
+        return True, "Valid"
+
 def process_user_input(user_input):
     docs = vector_db.similarity_search(user_input, k=2)
     context = "\n".join([d.page_content for d in docs])
     
-    # Swapped to the active Gemini 2.5 Flash model
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.1)
+    # 1. ENFORCE DETERMINISM: Temperature 0.0 for regulated spaces
+    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.0)
     
     prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a helpful insurance bundling assistant for The Mutual Group.
-        Use the following retrieved policy documents to answer the user's questions:
+        ("system", """You are a strictly governed underwriting assistant for The Mutual Group.
+        You must ONLY use the provided context to answer. If the context does not contain the answer, explicitly state: "I must refer you to a licensed agent."
         
         {context}
         
         RULES:
         1. Keep answers brief and professional.
-        2. If the user explicitly agrees to add a policy or says "let's do it" or "add umbrella", you MUST append this exact string to the very end of your response: [ADD_POLICY: <Policy Name>|<Price>]
+        2. Never hallucinate prices or policies not in the text.
+        3. If the user explicitly agrees to add a policy, you MUST append this exact string to the very end of your response: [ADD_POLICY: <Policy Name>|<Price>]
         Example: [ADD_POLICY: Umbrella|$45]"""),
         ("human", "{question}")
     ])
@@ -105,14 +126,25 @@ if st.session_state.step == "shop":
                 match = re.search(r"\[ADD_POLICY:\s*(.*?)\|(.*?)\]", raw_response)
                 
                 if match:
-                    clean_response = raw_response.replace(match.group(0), "").strip()
-                    st.write(clean_response)
-                    st.session_state.messages.append({"role": "assistant", "content": clean_response})
+                    proposed_policy = match.group(1).strip()
+                    proposed_price = match.group(2).strip()
                     
-                    st.session_state.bundled_policy = match.group(1).strip()
-                    st.session_state.bundled_price = match.group(2).strip()
-                    st.session_state.step = "checkout"
-                    st.rerun()
+                    # RUN DETERMINISTIC GUARDRAIL CHECK
+                    is_valid, guardrail_msg = TMG_Guardrails.validate_policy_bundle(proposed_policy, proposed_price)
+                    
+                    if is_valid:
+                        clean_response = raw_response.replace(match.group(0), "").strip()
+                        st.write(clean_response)
+                        st.session_state.messages.append({"role": "assistant", "content": clean_response})
+                        
+                        st.session_state.bundled_policy = proposed_policy
+                        st.session_state.bundled_price = proposed_price
+                        st.session_state.step = "checkout"
+                        st.rerun()
+                    else:
+                        # Display the Guardrail intervention to the user
+                        st.error(guardrail_msg)
+                        st.session_state.messages.append({"role": "assistant", "content": guardrail_msg})
                 else:
                     st.write(raw_response)
                     st.session_state.messages.append({"role": "assistant", "content": raw_response})
